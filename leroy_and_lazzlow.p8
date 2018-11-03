@@ -3,7 +3,7 @@ version 16
 __lua__
 function _init()
 	p = {}
-	p.x = 48
+	p.x = 56
 	p.y = 56
 	p.facing = 1
 	friend = {}
@@ -233,7 +233,7 @@ function create_arrow(x, y, direction)
  arrow.x = x
  arrow.y = y
  arrow.direction = direction
- arrow.smile = 3
+ arrow.is_moving = true
  arrow.sprite = 2
  add(arrow_array, arrow)
 end
