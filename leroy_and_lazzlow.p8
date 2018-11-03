@@ -3,7 +3,7 @@ version 16
 __lua__
 function _init()
 	p = {}
-	p.x = 56
+	p.x = 48
 	p.y = 56
 	p.facing = 1
 	friend = {}
