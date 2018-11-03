@@ -13,20 +13,22 @@ function _init()
 	init_turn_timer = 5
 	turn_timer = init_turn_timer
 	arrow_array = {}
-	row_d = 0
-	col_d = 0
+	target = nil
+	player = nil
+	setup_enemies()
 end
 
 function _update()
  get_move() 
  turn_timer -= 1
+ update_arrows()
 end
 
 function _draw()
  cls()
- draw_player()
  draw_map()
  draw_arrows()
+ draw_player()
  debug()
 end
 -->8
@@ -64,8 +66,8 @@ end
 function draw_arrow(arrow)
  local x = cur_map_x-1
  local y = cur_map_y-1
- spr(arrow.sprite, arrow.x, arrow.y)
  map(16*x+(arrow.x/8)-1, 16*y+(arrow.y/8)-1, arrow.x-8, arrow.y-8, 3, 3)
+ spr(arrow.sprite, arrow.x, arrow.y)
 end
 
 -->8
@@ -104,24 +106,28 @@ function shoot()
 end
 
 function move_left()
+ p.facing = 0
  if can_move(p.x-8, p.y) then
   p.x -= 8
  end
 end
 
 function move_right()
+ p.facing = 1
  if can_move(p.x+8, p.y) then
   p.x += 8
  end
 end
 
 function move_up()
+ p.facing = 2
  if can_move(p.x, p.y-8) then
   p.y -= 8
  end
 end
 
 function move_down()
+ p.facing = 3
  if can_move(p.x, p.y+8) then
   p.y += 8 
  end
@@ -150,14 +156,61 @@ function fire_arrow(x, y, direction)
  create_arrow(x, y, direction)
 end
 
-
 function create_arrow(x, y, direction)
+ first_arrow_sprite = 48
  arrow = {}
  arrow.x = x
  arrow.y = y
  arrow.direction = direction
- arrow.sprite = 2
+ arrow.dead = false
+ arrow.sprite = direction+first_arrow_sprite
  add(arrow_array, arrow)
+end
+
+function update_arrows()
+ for arrow in all(arrow_array) do
+  local new_x = arrow.x
+  local new_y = arrow.y
+  if arrow.direction == 0 then
+   new_x -= 8
+  elseif arrow.direction == 1 then
+   new_x += 8
+  elseif arrow.direction == 2 then
+   new_y -= 8
+  elseif arrow.direction == 3 then
+   new_y += 8
+  end
+  if arrow.dead and arrow.dead_time < 5 then
+   arrow.dead_time +=1
+  elseif arrow.dead and arrow.dead_time >= 5 then 
+   arrow_dead(arrow, new_x, new_y)
+  end
+  if not get_bit(new_x, new_y, 1) then
+   arrow.x = new_x
+   arrow.y = new_y 
+  else
+   arrow_collision(arrow, new_x, new_y)
+  end
+ end
+end
+
+function arrow_collision(arrow, x, y) 
+ if arrow.dead == false then
+  arrow.dead_time = 0
+  arrow.dead = true
+   --play sound and do...nothing?
+ end
+end
+
+function arrow_dead(arrow, x, y)
+ target_pos_x = 16*(cur_map_x-1)+x/8
+ target_pos_y = 16*(cur_map_y-1)+y/8
+ target = mget(target_pos_x, target_pos_y)
+ dir_target = index(enemy_array, target)
+ if dir_target + arrow.direction == 1 or dir_target + arrow.direction == 5 then
+  mset(target_pos_x, target_pos_y, 0)
+ end
+ del(arrow_array, arrow)
 end
 
 function delete_arrows()
@@ -280,12 +333,25 @@ function wall_back_blue(row,col)
 end
 
 -->8
-function debug()
- print(get_bit(p.x,p.y,5), 0, 0)
- print(row_d, 70, 0)
-  print(col_d, 70, 10)
-  print(test, 0, 10)
+function setup_enemies()
+ enemy_array = {14, 13, 12, 11} 
 end
+
+function index(array, value)
+ local iter = 0
+ for i=1, #array+1 do
+  if array[i] == value then
+   return iter
+  end
+  iter+=1
+ end
+end
+
+function debug()
+	print(target, 0, 0)
+	print(player, 0, 10)
+end
+
 __gfx__
 000000006004400600000000000099005555555500000000000000000000000000000000585858585c5c5c5c00000000066f0000044444000044444008080808
 00000000600440060000400000999900500505050cccccc00cccccc0088888800888888080080805c00c0c0544446554000ff00004f7470660747f4080000000
