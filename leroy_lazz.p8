@@ -3,12 +3,22 @@ version 16
 __lua__
 function _init()
 	p = {}
-	p.x = 56
-	p.y = 56
+	p.x = 88
+	p.y = 96
 	p.facing = 1
 	friend = {}
 	friend.flight = false
-	cur_map_x = 1
+	friend.here = true
+	friend.rest_sprite = 23
+	friend.fly_sprite = 22
+	friend.cur_sprite = friend.rest_sprite
+	ice = {}
+	ice.x = 96
+	ice.y = 208
+	ice_spawn = {}
+	ice_spawn.x = ice.x
+	ice_spawn.y = ice.y
+	cur_map_x = 0
 	cur_map_y = 1
 	init_turn_timer = 5
 	turn_timer = init_turn_timer
@@ -16,8 +26,10 @@ function _init()
 	target = nil
 	player = nil
 	setup_enemies()
-	text_array = {'hello', 'i am your best firend forever', 'where are your wings??????'}
-	text = 'in the beginning was the word and the word was with god and the word was god'
+	text_array = {}
+	populate_text('sound test')
+	populate_text('this is a string to test string length')
+	
 	in_dialogue = true
 end
 
@@ -40,12 +52,16 @@ end
 function draw_player()
 	if p.facing == 0 then -- left
  	spr(18, p.x, p.y)
+ 	draw_friend(p.x+8, p.y)
  elseif p.facing == 1 then -- right
  	spr(19, p.x, p.y)
+ 	draw_friend(p.x-8, p.y)
  elseif p.facing == 2 then -- up
  	spr(21, p.x, p.y)
+ 	draw_friend(p.x, p.y+8)
 	elseif p.facing == 3 then -- down
  	spr(20, p.x, p.y)
+ 	draw_friend(p.x, p.y-8)
  end
 end
 
@@ -61,12 +77,18 @@ function draw_full_map()
  local x = cur_map_x
  local y = cur_map_y
  map(16*x,16*y,0,0,16,16)
+ draw_ice()
 end
 
 function draw_partial_map()
  local x = cur_map_x
  local y = cur_map_y
  map(16*x+(p.x/8)-3, 16*y+(p.y/8)-3, p.x-24, p.y-24, 7, 7)
+ draw_x = ice.x - (cur_map_x*128)
+ draw_y = ice.y - (cur_map_y*128)
+ if p.x <= draw_x+24 and p.x >= draw_x-24 and p.y <= draw_y+24 and p.y >= draw_y-24 then
+  draw_ice()
+ end
 end
 
 function draw_arrows()
@@ -82,8 +104,14 @@ function draw_arrow(arrow)
  spr(arrow.sprite, arrow.x, arrow.y)
 end
 
+function draw_ice()
+ draw_x = ice.x - (cur_map_x*128)
+ draw_y = ice.y - (cur_map_y*128)
+ spr(24, draw_x, draw_y)
+end
+
 function draw_texts()
- if #text_array > 0 then
+ if text_array[1] then
   draw_text(text_array[1])
  end
 end
@@ -121,9 +149,16 @@ function draw_text(text)
 end
 
 function draw_box(x, y, w, h)
- rectfill(x, y, x+w, y+h, 0)
+ rectfill(x-2, y-2, x+w+4, y+h+4, 0)
  rect(x, y, x+w, y+h, 1)
+ rect(x-1, y-1, x+w+1, y+h+1, 1)
  print('',0,0,7)
+end
+
+function draw_friend(x, y)
+ if friend.here then
+  spr(friend.cur_sprite, x, y)
+ end
 end
 -->8
 --player controller
@@ -153,8 +188,13 @@ function get_move()
 end
 
 function progress_dialogue()
- if not (btnp() == 0) then
+ if btnp(4) then
   del(text_array, text_array[1])
+  if text_array[1] == nil then
+   sfx(26)
+  else
+   sfx(24)
+  end
  end
  if text_array[1] == nil then
   in_dialogue = false
@@ -162,7 +202,9 @@ function progress_dialogue()
 end
 
 function fly()
- friend.flight = true
+ if friend.here then
+  friend.flight = true
+ end
 end
 
 function land()
@@ -175,29 +217,63 @@ end
 
 function move_left()
  p.facing = 0
- if can_move(p.x-8, p.y) then
-  p.x -= 8
+ target_x =p.x-8
+ target_y = p.y
+ success = true
+ if can_move(target_x, target_y) then
+  if is_ice(target_x,target_y) then
+   success = move_ice(target_x-8, target_y, cur_map_x, cur_map_y)
+  end
+  if success then
+    p.x = target_x
+  end
  end
+ toggle_friend()
 end
 
 function move_right()
+ toggle_friend()
  p.facing = 1
- if can_move(p.x+8, p.y) then
-  p.x += 8
+ target_x =p.x+8
+ target_y = p.y
+ success = true
+ if can_move(target_x, target_y) then
+  if is_ice(target_x,target_y) then
+   success = move_ice(target_x+8, target_y, cur_map_x, cur_map_y)
+  end
+  if success then
+    p.x = target_x
+  end
  end
 end
 
 function move_up()
  p.facing = 2
- if can_move(p.x, p.y-8) then
-  p.y -= 8
+ target_x =p.x
+ target_y = p.y-8
+ success = true
+ if can_move(target_x, target_y) then
+  if is_ice(target_x,target_y) then
+   success = move_ice(target_x, target_y-8, cur_map_x, cur_map_y)
+  end
+  if success then
+    p.y = target_y
+  end
  end
 end
 
 function move_down()
  p.facing = 3
- if can_move(p.x, p.y+8) then
-  p.y += 8 
+ target_x =p.x
+ target_y = p.y+8
+ success = true
+ if can_move(target_x, target_y) then
+ 	if	is_ice(target_x,target_y) then
+   success = move_ice(target_x, target_y+8, cur_map_x, cur_map_y)
+  end
+  if success then
+    p.y = target_y
+  end
  end
 end
 
@@ -205,6 +281,17 @@ function can_move(x, y)
  return not is_obstacle(x, y)
 end
 
+function is_ice(x,y)
+ local_x = ice.x - (cur_map_x*128)
+ local_y = ice.y - (cur_map_y*128)
+ return (local_x == x and local_y == y)
+end
+
+function is_ice_map(x,y)
+ local_x = ice.x 
+ local_y = ice.y
+ return (local_x == x and local_y == y)
+end
 -->8
 --other controller
 function fire_arrow(x, y, direction)
@@ -238,12 +325,14 @@ function create_arrow(x, y, direction)
  arrow.dead = false
  arrow.sprite = direction+first_arrow_sprite
  add(arrow_array, arrow)
+ --sfx(18)
+ --sfx(19)
  return arrow
 end
 
 function update_arrows()
  for arrow in all(arrow_array) do
-  if is_obstacle(arrow.x, arrow.y) then
+  if is_obstacle(arrow.x, arrow.y) or is_ice(arrow.x, arrow.y) then
    arrow_in_obstacle(arrow)
   else
    local new_x = arrow.x
@@ -262,7 +351,7 @@ function update_arrows()
    elseif arrow.dead and arrow.dead_time >= 5 then 
     arrow_dead(arrow, new_x, new_y)
    end
-   if not get_bit(new_x, new_y, 1) then --should be is🅾️bstacle
+   if not (get_bit(new_x, new_y, 1) or is_ice(new_x,new_y)) then --should be is🅾️bstacle
     arrow.x = new_x
     arrow.y = new_y 
    else
@@ -275,14 +364,13 @@ end
 function arrow_in_obstacle(arrow)
  local x = 16*(cur_map_x)+arrow.x/8
  local y = 16*(cur_map_y)+arrow.y/8
- hit_target(x, y)
+ hit_target(arrow, x, y)
 end
 
 function arrow_collision(arrow) 
  if arrow.dead == false then
   arrow.dead_time = 0
   arrow.dead = true
-   --play sound and do...nothing?
  end
 end
 
@@ -295,10 +383,21 @@ end
 function hit_target(arrow, x, y)
  target = mget(x, y)
  dir_target = index(enemy_array, target)
+ print_x = x
+ print_y = y
  if dir_target then
+  sfx(21)
+  sfx(20)
   if dir_target + arrow.direction == 1 or dir_target + arrow.direction == 5 then
-   mset(x, y, 0)
+   mset(x, y, 0)  
+   sfx(25)
   end
+ elseif is_ice_map(x*8,y*8) then
+ 	reset_ice()
+ 	sfx(25)
+ else --wall
+  sfx(21)
+  sfx(20)
  end
  del(arrow_array, arrow)
 end
@@ -336,6 +435,24 @@ function reset_map()
  delete_arrows()
 end
 
+function move_ice(x, y, mapx ,mapy)
+ local target_x = (mapx*16*8)+x
+ local target_y = (mapy*16*8)+y
+ if fget(mget(target_x/8, target_y/8),1) then
+  if mget(target_x/8, target_y/8) == 17 then
+   mset(target_x/8, target_y/8, 0)
+   ice.x = target_x
+		 ice.y = target_y
+		 sfx(27)
+		 return true
+  end
+ else 
+  ice.x = target_x
+  ice.y = target_y
+  return true
+ end
+ return false
+end
 
 -->8
 --helper functions
@@ -365,7 +482,11 @@ end
 function press_red()
 	start_row = cur_map_x*16
 	start_col = cur_map_y*16
-	mset(start_row+(p.x/8), start_col+(p.y/8), 8)
+	if mget(start_row+(p.x/8), start_col+(p.y/8)) == 7 then
+	 sfx(22)
+	 sfx(23)
+		mset(start_row+(p.x/8), start_col+(p.y/8), 8)
+	end
 	for row = start_row, start_row+16 do
 		for col = start_col, start_col+16 do
 			if mget(row,col) == 15 then
@@ -382,7 +503,11 @@ end
 function press_blue()
 	start_row = cur_map_x*16
 	start_col = cur_map_y*16
-	mset(start_row+(p.x/8), start_col+(p.y/8), 6)
+	if mget(start_row+(p.x/8), start_col+(p.y/8)) == 5 then
+	 sfx(22)
+	 sfx(23)
+	 mset(start_row+(p.x/8), start_col+(p.y/8), 6)
+	end
 	for row = start_row, start_row+16 do
 		for col = start_col, start_col+16 do
 			if mget(row,col) == 16 then
@@ -449,16 +574,35 @@ function get_next_word(text)
 end
 
 function populate_text(text)
+ if not in_dialogue then
+  in_dialogue = true
+  sfx(26)
+ end
  add(text_array, text)
 end
 
+function reset_ice()
+ player = 'ice reset'
+	ice.x = ice_spawn.x
+	ice.y = ice_spawn.y
+end
 -->8
 -- debug
 function debug()
-	print(target, 0, 0)
-	print(player, 0, 10)
-	print(btnp(), 70, 0)
-	print(#get_next_word(text), 70, 10)
+	print(friend.cur_sprite, 0, 0)
+	print(friend.rest_sprite, 0, 10)
+	print(text_array[1], 70, 0)
+	print(in_dialogue, 70, 10)
+	print(test_string, 70,70)
+	print(ice.y, 70,80)	
+end
+
+function toggle_friend()
+ if friend.cur_sprite == friend.rest_sprite then
+  friend.cur_sprite = friend.fly_sprite
+ else
+  friend.cur_sprtie = friend.rest_sprite
+ end
 end
 
 __gfx__
@@ -495,7 +639,7 @@ c0c0c0c0000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000400000555000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000007070000050000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __gff__
-0000000002141024204282060606064080060000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000002141024204282060606064080060000000000000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __map__
 0000000000000000000000000000000404040404040404040404040404040404000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -521,10 +665,10 @@ __map__
 04000000000000000004000000000004040000000004000004000000000000040400000000040000000d0004000004040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 040a04040b04040404040a040404040404040404040400000404040404040404040500000004000400040004000404040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0400000000040000000000000000000000000000000d00000400000000000004040a04040404040400000004000000040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-04000000060f0e07000000000000000000000000000d0000040000000000000f0f0000000007000404040b0404040c040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+04000000060f0e07000000000000000000000000000e0000040000000000000f0f0000000007000404040b0404040c040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 040000000c040404040404040411040404040404040411110404040404040404040404040b04040404040004000400040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0400000d0a0400000000040000000004040000000004000004000000000000040407000b090000040d000000000400040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-040a0d0f0404000000000e0018000004040000000004000004000000000000040400000a0404040404000404000000040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+040a0d0f0404000000000e0000000004040000000004000004000000000000040400000a0404040404000404000000040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0400040404040000000004000000000404000000000400000400000000000004040004000000000004000e00040400040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0400000000000007000004000000000404000000000400000400000000000004040004040004040c04000400000400040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0400000000000000000004000000000404000000000400000400000000000004040004040000040504000400040400040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -556,7 +700,7 @@ __sfx__
 000200002862400000346451060000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 003c00001062500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00050000233651e365000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000800003072024751247551270000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000800003071024731247351270000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 000400001e33425351233002036120341203312032100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 005000000c61500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 000700001476514763000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
