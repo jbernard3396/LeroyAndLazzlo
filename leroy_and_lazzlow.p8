@@ -233,7 +233,7 @@ function create_arrow(x, y, direction)
  arrow.x = x
  arrow.y = y
  arrow.direction = direction
- arroe
+ arrow.smile = 3
  arrow.sprite = 2
  add(arrow_array, arrow)
 end
