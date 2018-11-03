@@ -16,7 +16,9 @@ function _init()
 	target = nil
 	player = nil
  setup_enemies()
- text = 'it was a dark and stormy night when all of the goblins got into a huddle and stabbed enemies with swords'
+ text_array = {'hello', 'i am your best firend forever', 'where are your wings??????'}
+ text = 'in the beginning was the word and the word was with god and the word was god'
+ in_dialogue = true
 end
 
 function _update()
@@ -30,7 +32,7 @@ function _draw()
  draw_map()
  draw_arrows()
  draw_player()
- draw_text(text)
+ draw_texts()
  debug()
 end
 -->8
@@ -72,13 +74,19 @@ function draw_arrow(arrow)
  spr(arrow.sprite, arrow.x, arrow.y)
 end
 
+function draw_texts()
+ if #text_array > 0 then
+  draw_text(text_array[1])
+ end
+end
+
 function draw_text(text)
- if text == '' then
+ if text == '' or text == nil then
   return
  end
  local text_copy = text
- line_beginning_x = 10
- line_beginning_y = 20
+ line_beginning_x = 16
+ line_beginning_y = 24
  line_height = 8
  line_length = 24
  char_count = #text
@@ -87,13 +95,15 @@ function draw_text(text)
  local new_pointer = 0
  local line_pointer = 0
  local new_line_pointer = 0
- draw_box(line_beginning_x-2, line_beginning_y-2, (line_length*4)+6, (line_count*line_height))
+ draw_box(line_beginning_x-2, line_beginning_y-2, (line_length*4), (line_count*line_height))
  for i=0, 1000 do
   word = get_next_word(text_copy)
   new_pointer = pointer_x + #word
   if new_pointer > line_length then
-   new_pointer = 0
+   pointer_x = 0
+   new_pointer = pointer_x + #word
    new_line_pointer = line_pointer+1
+   line_pointer = new_line_pointer
   end
   print(word ,line_beginning_x+pointer_x*4, line_beginning_y+line_height*line_pointer)
   pointer_x = new_pointer
@@ -110,6 +120,10 @@ end
 -->8
 --player controller
 function get_move()
+ if in_dialogue then
+  progress_dialogue()
+ return 
+ end
 	if btn(5) then
 	 fly()
 	elseif not btn(5) then 
@@ -127,6 +141,15 @@ function get_move()
 	 end
 	 update_map()
 	end
+end
+
+function progress_dialogue()
+ if not (btnp() == 0) then
+  del(text_array, text_array[1])
+ end
+ if text_array[1] == nil then
+  in_dialogue = false
+ end
 end
 
 function fly()
@@ -190,7 +213,8 @@ function fire_arrow(x, y, direction)
   y+=8 
  end
  if is_obstacle(x, y) then
-  arrow_dead(nil,x,y)
+  create_arrow(x, y, direction)
+  arrow_dead(arrow,x,y)
  else
   create_arrow(x, y, direction)
  end
@@ -205,6 +229,7 @@ function create_arrow(x, y, direction)
  arrow.dead = false
  arrow.sprite = direction+first_arrow_sprite
  add(arrow_array, arrow)
+ return arrow
 end
 
 function update_arrows()
@@ -241,7 +266,6 @@ end
 function arrow_in_obstacle(arrow)
  local x = 16*(cur_map_x-1)+arrow.x/8
  local y = 16*(cur_map_y-1)+arrow.y/8
- 
  hit_target(x, y)
 end
 
@@ -339,12 +363,16 @@ function get_next_word(text)
  end
  return text
 end
+
+function populate_text(text)
+ add(text_array, text)
+end
 -->8
 -- debug
 function debug()
 	print(target, 0, 0)
 	print(player, 0, 10)
-	print(line_count*line_height, 70, 0)
+	print(btnp(), 70, 0)
 	print(#get_next_word(text), 70, 10)
 end
 __gfx__
